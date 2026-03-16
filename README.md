@@ -1,5 +1,13 @@
 # PLTA — Privacy-preserving Location-based Task Allocation
 
+> **This repository is the official implementation of the research article:**
+>
+> **"PLTA: Private Location Task Allocation using multidimensional approximate agreement"**
+> Published in: *2024 IEEE Conference on Communications and Network Security (CNS)*
+> DOI: [10.1109/CNS62487.2024.10735598](https://doi.org/10.1109/CNS62487.2024.10735598)
+
+---
+
 This repository contains the full implementation and evaluation code for **PLTA**, a distributed, privacy-preserving task allocation algorithm for Mobile Crowdsourcing Systems (MCS).
 
 PLTA is compared against **LDPP** (Location Differential Privacy Protocol), a Voronoi-based baseline that applies the Location Coding Obfuscation (LCO) mechanism with differential privacy.
@@ -147,7 +155,17 @@ All parameters are in `config.py`:
 
 ## Citation
 
-If you use this code in your research, please cite the associated paper (link to be added).
+If you use this code in your research, please cite:
+
+```bibtex
+@inproceedings{plta2024,
+  title     = {PLTA: Private Location Task Allocation using multidimensional approximate agreement},
+  booktitle = {2024 IEEE Conference on Communications and Network Security (CNS)},
+  year      = {2024},
+  doi       = {10.1109/CNS62487.2024.10735598},
+  url       = {https://doi.org/10.1109/CNS62487.2024.10735598}
+}
+```
 
 ---
 
