@@ -15,9 +15,11 @@ SF_LAT_MIN, SF_LAT_MAX = 37.70, 37.84
 REF_LAT, REF_LON = 37.7749, -122.4194
 
 # ── Simulation ────────────────────────────────────────────────────────────────
-NUM_SIMULATIONS = 1300   # total Monte-Carlo repetitions
-NUM_TASKS      = 100     # m  (tasks per simulation)
-# NUM_WORKERS   = size - NUM_TASKS  (every remaining MPI rank = one worker)
+NUM_SIMULATIONS = 1000   # Monte-Carlo repetitions per configuration (paper: 1,000)
+# Number of task-nodes (= n in the paper).  Paper evaluates n ∈ {20, 40, 60, 80}.
+# Workers (m = 100 in the paper) = MPI_size − NUM_TASKS.
+# Set mpirun -n (NUM_TASKS + 100) accordingly.
+NUM_TASKS      = 20      # start with n = 20; change to 40 / 60 / 80 for full sweep
 
 # PLTA iteration counts to benchmark
 PLTA_ITERATIONS = [5, 15, 30]

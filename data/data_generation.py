@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-data/data_generation.py — Placeholder for dataset generation.
+data/data_generation.py — Download and extract the Gowalla dataset.
 
-This script will contain the code to generate / pre-process the raw dataset
-used by the PLTA experiments.  The implementation will be added later.
+Downloads loc-gowalla_totalCheckins.txt.gz from the Stanford SNAP repository,
+extracts it, and saves it as data/loc-gowalla_totalCheckins.txt.
 
 Expected output
 ---------------
@@ -11,10 +11,49 @@ data/loc-gowalla_totalCheckins.txt
     Tab-separated file with columns:
         user | check-in_time | latitude | longitude | location_id
 
-    This is the standard Gowalla dataset available at:
-    https://snap.stanford.edu/data/loc-Gowalla.html
+    Source: https://snap.stanford.edu/data/loc-Gowalla.html
 """
 
-# TODO: add data generation / download / pre-processing code here.
+import gzip
+import os
+import shutil
+import urllib.request
 
-raise NotImplementedError("data_generation.py is not yet implemented.")
+DOWNLOAD_URL = "https://snap.stanford.edu/data/loc-gowalla_totalCheckins.txt.gz"
+SCRIPT_DIR   = os.path.dirname(os.path.abspath(__file__))
+GZ_FILE      = os.path.join(SCRIPT_DIR, "loc-gowalla_totalCheckins.txt.gz")
+OUT_FILE     = os.path.join(SCRIPT_DIR, "loc-gowalla_totalCheckins.txt")
+
+
+def download(url: str, dest: str) -> None:
+    print(f"Downloading {url} ...")
+    with urllib.request.urlopen(url) as response, open(dest, "wb") as out:
+        total = int(response.headers.get("Content-Length", 0))
+        downloaded = 0
+        chunk = 1 << 20  # 1 MB
+        while True:
+            block = response.read(chunk)
+            if not block:
+                break
+            out.write(block)
+            downloaded += len(block)
+            if total:
+                print(f"  {downloaded / 1e6:.1f} / {total / 1e6:.1f} MB", end="\r")
+    print()
+
+
+def extract(gz_path: str, out_path: str) -> None:
+    print(f"Extracting {gz_path} ...")
+    with gzip.open(gz_path, "rb") as f_in, open(out_path, "wb") as f_out:
+        shutil.copyfileobj(f_in, f_out)
+    print(f"Saved to {out_path}")
+
+
+if __name__ == "__main__":
+    if os.path.exists(OUT_FILE):
+        print(f"Dataset already exists at {OUT_FILE} — nothing to do.")
+    else:
+        download(DOWNLOAD_URL, GZ_FILE)
+        extract(GZ_FILE, OUT_FILE)
+        os.remove(GZ_FILE)
+        print("Done.")

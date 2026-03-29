@@ -1,34 +1,21 @@
 # PLTA — Privacy-preserving Location-based Task Allocation
 
-> **This repository is the official implementation of the research article:**
+> **This repository is the official implementation of:**
 >
 > **"PLTA: Private Location Task Allocation using multidimensional approximate agreement"**
-> Published in: *2024 IEEE Conference on Communications and Network Security (CNS)*
+> *2024 IEEE Conference on Communications and Network Security (CNS)*
 > DOI: [10.1109/CNS62487.2024.10735598](https://doi.org/10.1109/CNS62487.2024.10735598)
-
----
-
-This repository contains the full implementation and evaluation code for **PLTA**, a distributed, privacy-preserving task allocation algorithm for Mobile Crowdsourcing Systems (MCS).
-
-PLTA is compared against **LDPP** (Location Differential Privacy Protocol), a Voronoi-based baseline that applies the Location Coding Obfuscation (LCO) mechanism with differential privacy.
 
 ---
 
 ## Overview
 
-In MCS platforms (e.g., spatial task apps), workers share their locations with a central server to be matched to nearby tasks. This raises serious privacy concerns.
+PLTA is a distributed, privacy-preserving task allocation algorithm for Mobile Crowdsensing (MCS).
+Workers and tasks run the **MidExtremes** approximate-agreement protocol to collectively agree on
+a noise offset, which each node adds to its own x-coordinate before submitting its location to the
+server. The server then solves an ILP matching on the perturbed locations.
 
-**PLTA** protects worker and task locations through a distributed perturbation protocol called **MidExtrem**:
-- Each node (task or worker) is assigned to one MPI process.
-- Over *N* communication rounds, processes exchange coordinate estimates with their neighbours, identify the extremal pair (max absolute difference), and update to the midpoint.
-- The resulting offset is added to each node's true coordinate before any matching is performed.
-
-**LDPP** (baseline):
-- Constructs a Voronoi diagram partitioned by task locations.
-- Each worker determines its Voronoi region and obfuscates its location using LCO + differential privacy (ε-LDP).
-- An ILP matches workers to tasks maximising acceptance probability.
-
-Both approaches are evaluated using an **ILP-based optimal matching** on the (possibly perturbed) location data.
+PLTA is compared against **LDPP**, a Voronoi + Local Differential Privacy baseline from [Zhang et al., 2024].
 
 ---
 
@@ -36,52 +23,160 @@ Both approaches are evaluated using an **ILP-based optimal matching** on the (po
 
 ```
 PLTA/
-├── main.py                    # MPI entry point — runs the full experiment
-├── config.py                  # All experiment parameters in one place
+├── main.py                  # MPI entry point — runs the full experiment
+├── config.py                # All experiment parameters in one place
 ├── requirements.txt
-├── run.sh                     # SLURM job script
+├── run.sh                   # SLURM job script (HPC)
 │
 ├── src/
-│   ├── algorithms.py          # MidExtrem (PLTA) and LDPP implementations
-│   ├── helpers.py             # Distance utilities, ILP solvers (OR-Tools)
-│   └── data_loader.py         # Gowalla dataset loading & coordinate conversion
+│   ├── algorithms.py        # MidExtremes (PLTA) and LDPP implementations
+│   ├── helpers.py           # Distance utilities and ILP solver (OR-Tools)
+│   └── data_loader.py       # Gowalla dataset loading & coordinate conversion
 │
 ├── data/
-│   ├── data_generation.py     # Placeholder — dataset generation (TODO)
-│   └── loc-gowalla_totalCheckins.txt   # ← provide this file (see below)
+│   ├── data_generation.py   # Downloads and extracts the Gowalla dataset
+│   ├── compute_zeta.py      # Estimates the practical noise threshold ζ (Section VI-B)
+│   └── loc-gowalla_totalCheckins.txt   # created by data_generation.py
 │
 └── output/
-    ├── aggregate_and_plot.py  # Load results JSON and generate figures
+    ├── aggregate_and_plot.py  # Loads results JSON and generates figures
     └── figures/               # Generated plots (created at runtime)
 ```
 
 ---
 
-## Dataset
+## Quick Start
 
-The experiments use the **Gowalla** location check-in dataset, filtered to the San Francisco metropolitan area.
-
-1. Download the raw file from [SNAP](https://snap.stanford.edu/data/loc-Gowalla.html):
-   `loc-gowalla_totalCheckins.txt.gz`
-2. Decompress and place it at `data/loc-gowalla_totalCheckins.txt`.
-
-A pickle cache (`data/gowalla_cache.pkl`) is created automatically on first run.
-
-> **Note:** `data_generation.py` is a placeholder for a future script that will automate this step.
-
----
-
-## Installation
+### 1. Install dependencies
 
 ```bash
-# Create and activate a virtual environment (optional but recommended)
-python -m venv .venv && source .venv/bin/activate
-
-# Install dependencies
+python -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-Required packages:
+### 2. Download the dataset
+
+```bash
+python data/data_generation.py
+```
+
+This downloads `loc-gowalla_totalCheckins.txt.gz` (~100 MB) from the
+[Stanford SNAP](https://snap.stanford.edu/data/loc-Gowalla.html) repository,
+extracts it to `data/loc-gowalla_totalCheckins.txt`, and deletes the archive.
+Re-running the script is safe — it skips the download if the file already exists.
+
+### 3. (Optional) Reproduce the practical ζ threshold (Section VI-B)
+
+The paper estimates the maximum safe noise magnitude ζ by running 10,000 simulations
+sampling 33 tasks + 67 workers each from the Gowalla dataset, and taking the minimum:
+
+```bash
+python data/compute_zeta.py --simulations 10000
+# Expected output:  min ζ ≈ 0.0005
+```
+
+This is informational only — `config.py` already encodes the result and the
+main experiment does not call this script.
+
+### 4. Run the experiments
+
+The paper evaluates PLTA with **workers fixed at 100** and the **number of tasks
+varying over {20, 40, 60, 80}** (1,000 simulations per configuration, 4,000 total).
+
+In the code, `NUM_TASKS` is the number of task-nodes and the number of worker-nodes
+equals `MPI_size − NUM_TASKS`. Rank 0 acts as both coordinator and task-node 0.
+
+Run each of the four configurations:
+
+```bash
+# n = 20 tasks, 100 workers  →  20 + 100 = 120 MPI ranks
+NUM_TASKS=20  mpirun -n 120 python main.py
+
+# n = 40 tasks, 100 workers  →  140 ranks
+NUM_TASKS=40  mpirun -n 140 python main.py
+
+# n = 60 tasks, 100 workers  →  160 ranks
+NUM_TASKS=60  mpirun -n 160 python main.py
+
+# n = 80 tasks, 100 workers  →  180 ranks
+NUM_TASKS=80  mpirun -n 180 python main.py
+```
+
+> **How `NUM_TASKS` is passed:** the value is read from `config.py`.
+> Edit `config.py` and set `NUM_TASKS` to the desired value before each run,
+> then adjust the `-n` argument to `mpirun` accordingly: `-n NUM_TASKS + 100`.
+
+Set `NUM_SIMULATIONS = 1000` in `config.py` for each run (paper default).
+
+Results from all runs are appended to the same `output/raw_results.json` file.
+
+### 5. Generate figures
+
+```bash
+python output/aggregate_and_plot.py
+```
+
+Figures are saved to `output/figures/`.
+
+---
+
+## Dataset
+
+The Gowalla check-in dataset is filtered to the **San Francisco area**
+(lon ∈ [−122.52, −122.36], lat ∈ [37.70, 37.84]).
+
+After preprocessing (`data_loader.py`):
+- **82,702 workers** — each user's most recent check-in
+- **1,173,991 tasks** — all earlier check-in locations
+
+A pickle cache (`data/gowalla_cache.pkl`) is created automatically on the first
+run of `main.py` and reused on subsequent runs.
+
+---
+
+## HPC cluster (SLURM)
+
+Edit `run.sh` to match your cluster's module names and partition, set
+`NUM_TASKS` in `config.py`, and submit:
+
+```bash
+sbatch run.sh
+```
+
+The default `run.sh` uses 201 ranks (100 tasks + 100 workers) as a starting point;
+adjust `--ntasks` to match the configuration you are running.
+
+---
+
+## Configuration (`config.py`)
+
+| Parameter | Paper value | Description |
+|-----------|-------------|-------------|
+| `NUM_SIMULATIONS` | 1000 | Monte-Carlo repetitions per configuration |
+| `NUM_TASKS` | 20 / 40 / 60 / 80 | Number of task-nodes (= n in the paper) |
+| `PLTA_ITERATIONS` | [5, 15, 30] | MidExtremes iteration counts (= T) |
+| `COORD_RANGES` | ±1 000 000 m | Initial value range for the agreement protocol (Δ = 2 000 000) |
+| `EPSILON` | 1.0 | Differential privacy budget (LDPP baseline) |
+| `D_MAX` | 10 000 m | Maximum acceptance distance (LDPP baseline) |
+
+> **Note on notation:** the paper uses *m* for workers (fixed at 100) and *n* for
+> tasks (varied). The code uses `NUM_TASKS` for the task count; the worker count
+> is derived as `MPI_size − NUM_TASKS`.
+
+---
+
+## Metrics
+
+| Metric | Description |
+|--------|-------------|
+| Average distance traveled | Mean worker travel distance after ILP matching |
+| Number of matching changes | Pairs that differ from the no-privacy optimal matching |
+| Running time | Wall-clock time of the perturbation (agreement) step |
+
+---
+
+## Dependencies
 
 | Package | Purpose |
 |---------|---------|
@@ -92,70 +187,10 @@ Required packages:
 | `ortools` | ILP matching solver |
 | `pandas` | Dataset loading |
 | `matplotlib` | Result plotting |
-| `pyproj` | Coordinate projection |
-
----
-
-## Running the experiments
-
-### Local (small test)
-
-```bash
-# 21 MPI ranks = 10 workers + 10 tasks + 1 coordinator
-mpirun -n 21 python main.py
-```
-
-Adjust `NUM_TASKS` in `config.py` to keep the total ranks ≤ your CPU count.
-
-### HPC cluster (SLURM)
-
-Edit `run.sh` to match your cluster's module names and partition, then:
-
-```bash
-sbatch run.sh
-```
-
-The default configuration uses **201 MPI ranks** (100 tasks + 100 workers + 1 coordinator) and **1 300 Monte-Carlo simulations**.
-
----
-
-## Generating figures
-
-Once the experiment has finished:
-
-```bash
-python output/aggregate_and_plot.py
-```
-
-Figures are saved to `output/figures/`:
-
-| File | Metric |
-|------|--------|
-| `cumulative_distance.png` | Total travel distance per algorithm |
-| `average_distance.png` | Average travel distance per worker |
-| `matching_changes.png` | Number of task–worker assignments that changed |
-| `execution_time.png` | Runtime of the perturbation step |
-
----
-
-## Configuration
-
-All parameters are in `config.py`:
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `NUM_SIMULATIONS` | 1300 | Monte-Carlo repetitions |
-| `NUM_TASKS` | 100 | Tasks per simulation |
-| `PLTA_ITERATIONS` | [5, 15, 30] | MidExtrem iteration counts |
-| `COORD_RANGES` | ±1 000 000 m | Range for random initial coordinates |
-| `EPSILON` | 1.0 | Differential privacy budget (LDPP) |
-| `D_MAX` | 10 000 m | Maximum acceptance distance (LDPP) |
 
 ---
 
 ## Citation
-
-If you use this code in your research, please cite:
 
 ```bibtex
 @inproceedings{plta2024,
