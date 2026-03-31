@@ -47,7 +47,46 @@ PLTA/
 
 ## Quick Start
 
-### 1. Install dependencies
+### 1. Set up the parallel computing environment
+
+The experiment requires MPI. Before anything else, load the MPI and Python modules
+for your system.
+
+**On the Toubkal HPC cluster**, first check which modules are available:
+
+```bash
+module avail OpenMPI
+module avail mpi4py
+```
+
+Then load the `mpi4py` module that bundles both OpenMPI and Python (recommended — it
+loads all required dependencies in one step):
+
+```bash
+module load mpi4py/4.0.1-gompi-2024a
+```
+
+> Substitute the version with whichever is listed on your cluster.
+> This automatically loads `OpenMPI/5.0.3-GCC-13.3.0` and `Python/3.12.3`.
+
+**If you use SLURM as your workload manager**, you must run the experiment inside a
+job allocation that reserves enough CPU slots. The largest configuration needs
+180 MPI ranks (80 tasks + 100 workers). Request an interactive session before
+running `mpirun`:
+
+```bash
+# Reserve 180 cores on one or more nodes, then get an interactive shell
+srun --ntasks=180 --cpus-per-task=1 --pty bash
+
+# Or submit all four configurations as a batch job
+sbatch run.sh
+```
+
+> Without a SLURM allocation, `mpirun` will refuse to start more processes than
+> the number of physical cores on the login node. Use `run.sh` as a template for
+> the batch script.
+
+### 2. Install dependencies
 
 ```bash
 python -m venv .venv
@@ -55,7 +94,7 @@ source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 2. Download the dataset
+### 4. Download the dataset
 
 ```bash
 python data/data_generation.py
@@ -66,7 +105,7 @@ This downloads `loc-gowalla_totalCheckins.txt.gz` (~100 MB) from the
 extracts it to `data/loc-gowalla_totalCheckins.txt`, and deletes the archive.
 Re-running the script is safe — it skips the download if the file already exists.
 
-### 3. (Optional) Reproduce the practical ζ threshold (Section VI-B)
+### 5. (Optional) Reproduce the practical ζ threshold (Section VI-B)
 
 The paper estimates the maximum safe noise magnitude ζ by running 10,000 simulations
 sampling 33 tasks + 67 workers each from the Gowalla dataset, and taking the minimum:
@@ -79,7 +118,7 @@ python data/compute_zeta.py --simulations 10000
 This is informational only — `config.py` already encodes the result and the
 main experiment does not call this script.
 
-### 4. Run the experiments
+### 6. Run the experiments
 
 The paper evaluates PLTA with **workers fixed at 100** and the **number of tasks
 varying over {20, 40, 60, 80}** (1,000 simulations per configuration, 4,000 total).
@@ -111,13 +150,33 @@ Set `NUM_SIMULATIONS = 1000` in `config.py` for each run (paper default).
 
 Results from all runs are appended to the same `output/raw_results.json` file.
 
-### 5. Generate figures
+### 7. Generate figures
 
 ```bash
 python output/aggregate_and_plot.py
 ```
 
 Figures are saved to `output/figures/`.
+
+---
+
+## Pre-computed results (no cluster required)
+
+If you do not have access to an MPI cluster, the `data/precomputed/` folder
+(coming soon) will contain ready-to-use result files covering a range of
+(**n tasks**, **m workers**) configurations — not limited to the paper's settings.
+
+Each JSON file includes:
+- The **worker and task spatial distributions** used in each simulation (sampled
+  from the Gowalla dataset), so results are fully reproducible and can serve as
+  input to your own implementation.
+- The **per-simulation outputs** of all five algorithms: **PLTA (T = 5)**,
+  **PLTA (T = 15)**, **PLTA (T = 30)**, **LDPP**, and **No-privacy** (optimal ILP
+  lower bound).
+
+You will be able to load any of these files directly into
+`output/aggregate_and_plot.py` to reproduce figures for the corresponding
+(n, m) configuration without running the experiment yourself.
 
 ---
 
