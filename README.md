@@ -1,4 +1,5 @@
 # PLTA — Privacy-preserving Location-based Task Allocation
+[![DOI](https://zenodo.org/badge/917133194.svg)](https://doi.org/10.5281/zenodo.19388181)
 
 > **This repository is the official implementation of:**
 >
