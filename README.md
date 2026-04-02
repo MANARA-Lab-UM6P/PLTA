@@ -252,12 +252,12 @@ adjust `--ntasks` to match the configuration you are running.
 ## Citation
 
 ```bibtex
-@inproceedings{plta2024,
+@inproceedings{abdeddine2024plta,
   title     = {PLTA: Private Location Task Allocation using multidimensional approximate agreement},
+  author    = {Abdeddine, Abderrafi and Bousetta, Amine and Iraqi, Youssef and Mekouar, Loubna},
   booktitle = {2024 IEEE Conference on Communications and Network Security (CNS)},
   year      = {2024},
-  doi       = {10.1109/CNS62487.2024.10735598},
-  url       = {https://doi.org/10.1109/CNS62487.2024.10735598}
+  doi       = {10.1109/CNS62487.2024.10735598}
 }
 ```
 
