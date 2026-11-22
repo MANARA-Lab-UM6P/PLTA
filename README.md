@@ -1,4 +1,4 @@
-# PLTA — Privacy-preserving Location-based Task Allocation
+# PLTA: Private Location Task Allocation
 [![DOI](https://zenodo.org/badge/917133194.svg)](https://doi.org/10.5281/zenodo.19388181)
 
 > **This repository is the official implementation of:**
@@ -255,7 +255,7 @@ adjust `--ntasks` to match the configuration you are running.
 ```bibtex
 @inproceedings{abdeddine2024plta,
   title     = {PLTA: Private Location Task Allocation using multidimensional approximate agreement},
-  author    = {Abdeddine, Abderrafi and Bousetta, Amine and Iraqi, Youssef and Mekouar, Loubna},
+  author    = {Abdeddine, Abderrafi and Boussetta, Amine and Iraqi, Youssef and Mekouar, Loubna},
   booktitle = {2024 IEEE Conference on Communications and Network Security (CNS)},
   year      = {2024},
   doi       = {10.1109/CNS62487.2024.10735598}
